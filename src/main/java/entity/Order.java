@@ -1,23 +1,23 @@
 package entity;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import org.eclipse.jetty.websocket.api.Session;
 import org.json.JSONObject;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class Order {
     String id;
     Session driverSession;
     Session passengerSession;
-    User driver;
-    User passenger;
+    Driver driver;
+    Passenger passenger;
 
     LatLng departure;
     ArrayList<LatLng> destinations;
+
+    HashSet<Integer> refusedDrivers = new HashSet<>();
 
     public Order(LatLng departure, ArrayList<LatLng> destinations) {
         this.departure = departure;
@@ -26,16 +26,16 @@ public class Order {
         id = UUID.randomUUID().toString();
     }
 
-    public String toJson() {
+    public JSONObject toJson() {
         Gson gson = new Gson();
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("id", id);
-        jsonObject.put("driver", gson.toJson(driver));
-        jsonObject.put("passenger", gson.toJson(passenger));
-        jsonObject.put("departure", gson.toJson(departure));
-        jsonObject.put("destinations", gson.toJson(destinations));
+        jsonObject.put("driver", new JSONObject(driver));
+        jsonObject.put("passenger", new JSONObject(passenger));
+        jsonObject.put("departure", new JSONObject(departure));
+        jsonObject.put("destinations", destinations);
 
-        return jsonObject.toString();
+        return jsonObject;
     }
 
     public Session getDriverSession() {
@@ -54,19 +54,19 @@ public class Order {
         this.passengerSession = passengerSession;
     }
 
-    public User getDriver() {
+    public Driver getDriver() {
         return driver;
     }
 
-    public void setDriver(User driver) {
+    public void setDriver(Driver driver) {
         this.driver = driver;
     }
 
-    public User getPassenger() {
+    public Passenger getPassenger() {
         return passenger;
     }
 
-    public void setPassenger(User passenger) {
+    public void setPassenger(Passenger passenger) {
         this.passenger = passenger;
     }
 
@@ -84,5 +84,13 @@ public class Order {
 
     public void setDestinations(ArrayList<LatLng> destinations) {
         this.destinations = destinations;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public HashSet<Integer> getRefusedDrivers() {
+        return refusedDrivers;
     }
 }

@@ -1,6 +1,8 @@
 package db;
 
-import entity.User;
+import entity.Car;
+import entity.Driver;
+import entity.Passenger;
 import enums.Role;
 
 public class DbController {
@@ -10,16 +12,20 @@ public class DbController {
 
     }
 
-    public User authenticate(String login, String password){
-        User user = null;
+    public Object authenticate(String login, String password){
+
         if(login.equals("p")){
-            user = new User(1, "Светлана", "Шмакова", "+79088743746", Role.PASSENGER);
+            return new Passenger(1, "Светлана", "Шмакова", "+79088743746");
         }
         if(login.equals("d")){
-            user = new User(2, "Илья", "Шмаков", "+79097387721", Role.DRIVER);
+            Driver driver = new Driver(2, "Илья", "Шмаков", "+79097387721");
+            Car car = new Car("Huyndai Solaris", "orange", "T000T00");
+            driver.setCar(car);
+
+            return driver;
         }
 
-        return user;
+        return null;
     }
 
     public static DbController getInstance() {

@@ -1,9 +1,9 @@
 package server;
-import com.google.gson.Gson;
 import db.DbController;
+import entity.Driver;
 import entity.LatLng;
 import entity.Order;
-import entity.User;
+import entity.Passenger;
 import javafx.util.Pair;
 import org.eclipse.jetty.websocket.api.*;
 import org.eclipse.jetty.websocket.api.annotations.*;
@@ -12,7 +12,6 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Map;
 
 @WebSocket
 public class WebSocketHandler {
@@ -38,13 +37,34 @@ public class WebSocketHandler {
             case "auth":
                 auth(user, jsonObject);
                 break;
-            case "newOrder":
-                Order order = createOrder(user, jsonObject);
-                sendInfoAboutDriverToPassenger(order);
-                //sendOrderToDriver(order);
-                break;
 
+            case "newOrder":
+                createOrder(user, jsonObject);
+                break;
+            case "whereDriver":
+                sendDriverLocationToPassenger(jsonObject);
+                break;
+                ////////////////////////////////////////////////////////////
+            case "orderResponse":
+                orderResponse(jsonObject);
+                break;
+            case "driverLocation":
+                updateDriverLocation(jsonObject, user);
+                break;
         }
+    }
+
+    private void sendDriverLocationToPassenger(JSONObject jsonObject) {
+        String orderId = jsonObject.getString("orderId");
+        Order order = SparkServer.orders.get(orderId);
+        LatLng driverLocation = order.getDriver().getCurrentLocation();
+
+        jsonObject = new JSONObject();
+        jsonObject.put("command", "driverLocation");
+        jsonObject.put("latitude", driverLocation.getLatitude());
+        jsonObject.put("longitude", driverLocation.getLongitude());
+
+        sendMessage(order.getPassengerSession(), jsonObject.toString());
     }
 
     private void sendMessage(Session user, String message){
@@ -59,14 +79,27 @@ public class WebSocketHandler {
         String login = jsonObject.getString("login");
         String password = jsonObject.getString("password");
 
-        User user = dbController.authenticate(login,password);
+        Object user = dbController.authenticate(login,password);
+
 
         jsonObject = new JSONObject();
+
         if(user != null){
-            SparkServer.addUser(session, user);
-            jsonObject.put("command", "auth_response");
-            jsonObject.put("result", "true");
-            jsonObject.put("user", new JSONObject(user));
+            if(user instanceof Passenger){
+                Passenger passenger = (Passenger) user;
+                SparkServer.passengers.put(session, passenger);
+
+                jsonObject.put("command", "auth_response");
+                jsonObject.put("result", "true");
+                jsonObject.put("user", new JSONObject(passenger));
+            }else{
+                Driver driver = (Driver) user;
+                SparkServer.drivers.put(session, driver);
+
+                jsonObject.put("command", "auth_response");
+                jsonObject.put("result", "true");
+                jsonObject.put("user", new JSONObject(driver));
+            }
         }else{
             jsonObject.put("command", "auth_response");
             jsonObject.put("result", "false");
@@ -75,7 +108,7 @@ public class WebSocketHandler {
         sendMessage(session, jsonObject.toString());
     }
 
-    private Order createOrder(Session session, JSONObject jsonObject){
+    private void createOrder(Session session, JSONObject jsonObject){
         JSONArray params = jsonObject.getJSONArray("params");
         JSONObject jsonOrder = params.getJSONObject(0);
 
@@ -92,9 +125,14 @@ public class WebSocketHandler {
             destinations.add(destination);
         }
 
-
         Order order = new Order(departure, destinations);
-        Pair<Session, User> pair = SparkServer.findDriver(order);
+        Pair<Session, Driver> pair = SparkServer.findDriver(order);
+
+        if(pair == null){
+            sendFaileMessageToPassenger(session);
+            return;
+        }
+
         order.setDriverSession(pair.getKey());
         order.setDriver(pair.getValue());
 
@@ -102,31 +140,75 @@ public class WebSocketHandler {
         order.setPassenger(SparkServer.passengers.get(session));
         SparkServer.addOrder(order);
 
-        return order;
+        sendOrderToDriver(order);
     }
 
     private void sendInfoAboutDriverToPassenger(Order order){
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("command", "carFinded");
-        ArrayList<Object> params = new ArrayList<>();
-        params.add(order.toJson());
-
-        jsonObject.put("params", params);
+        jsonObject.put("result", true);
+        jsonObject.put("driver", new JSONObject(order.getDriver()));
+        jsonObject.put("orderId", order.getId());
 
         String json = jsonObject.toString();
 
         sendMessage(order.getPassengerSession(), json);
     }
 
+    private void sendFaileMessageToPassenger(Session session)
+    {
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("command", "carFinded");
+        jsonObject.put("result", false);
+
+        String json = jsonObject.toString();
+
+        sendMessage(session, json);
+    }
+
     private void sendOrderToDriver(Order order){
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("command", "newOrder");
-        ArrayList<Object> params = new ArrayList<>();
-        params.add(order);
-
-        jsonObject.put("params", params);
+        jsonObject.put("order", order.toJson());
 
         sendMessage(order.getDriverSession(), jsonObject.toString());
+    }
+
+    private void orderResponse(JSONObject jsonObject){
+        String orderId = jsonObject.getString("orderId");
+        boolean result = jsonObject.getBoolean("result");
+
+        Order order = SparkServer.orders.get(orderId);
+
+        if(result){
+            sendInfoAboutDriverToPassenger(order);
+        }else{
+            order.getRefusedDrivers().add(order.getDriver().getId());
+            Pair<Session, Driver> driverSession = SparkServer.findDriver(order);
+
+            if(driverSession == null){
+                sendFaileMessageToPassenger(order.getPassengerSession());
+                SparkServer.orders.remove(order.getId());
+                return;
+            }
+
+            order.setDriverSession(driverSession.getKey());
+            order.setDriver(driverSession.getValue());
+
+            sendOrderToDriver(order);
+        }
+    }
+
+    private void updateDriverLocation(JSONObject jsonObject, Session user){
+        double latitude = jsonObject.getDouble("latitude");
+        double longitude = jsonObject.getDouble("longitude");
+
+        LatLng driverLocation = new LatLng(latitude, longitude);
+
+        System.out.println(latitude + ", " + longitude);
+
+        Driver driver = SparkServer.drivers.get(user);
+        driver.setCurrentLocation(driverLocation);
     }
 
 }

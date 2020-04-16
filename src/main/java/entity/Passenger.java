@@ -2,19 +2,21 @@ package entity;
 
 import enums.Role;
 
-public class User {
+public class Passenger {
     private int id;
     private String firstName;
     private String lastName;
     private String phone;
-    private Role role;
 
-    public User(int id, String firstName, String lastName, String phone, Role role) {
+    public Passenger(int id, String firstName, String lastName, String phone) {
         this.id = id;
         this.firstName = firstName;
         this.lastName = lastName;
         this.phone = phone;
-        this.role = role;
+    }
+
+    public int getId() {
+        return id;
     }
 
     public String getFirstName() {
@@ -27,13 +29,5 @@ public class User {
 
     public String getPhone() {
         return phone;
-    }
-
-    public Role getRole() {
-        return role;
-    }
-
-    public int getId() {
-        return id;
     }
 }

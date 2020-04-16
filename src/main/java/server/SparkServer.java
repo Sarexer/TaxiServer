@@ -2,8 +2,9 @@ package server;
 
 
 import db.DbController;
+import entity.Driver;
 import entity.Order;
-import entity.User;
+import entity.Passenger;
 import enums.Role;
 import javafx.util.Pair;
 import org.eclipse.jetty.websocket.api.Session;
@@ -13,16 +14,15 @@ import spark.Request;
 
 
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static spark.Spark.*;
 
 public class SparkServer {
     DbController dbController = DbController.getInstance();
-    static Map<Session, User> drivers = new ConcurrentHashMap<>();
-    static Map<Session, User> passengers = new ConcurrentHashMap<>();
-    static Map<Integer, Order> orders = new ConcurrentHashMap<>();
+    static Map<Session, Driver> drivers = new ConcurrentHashMap<>();
+    static Map<Session, Passenger> passengers = new ConcurrentHashMap<>();
+    static Map<String, Order> orders = new ConcurrentHashMap<>();
 
     public SparkServer() {
         staticFileLocation("/public"); //index.html is served at localhost:4567 (default port)
@@ -55,25 +55,28 @@ public class SparkServer {
         String login = map.value("login");
         String password = map.value("password");
 
-        User user = dbController.authenticate(login, password);
+        Object user = dbController.authenticate(login, password);
+
+
 
         JSONObject jsonObject = new JSONObject();
         if (user != null) {
             jsonObject.put("result", "true");
-            jsonObject.put("user", new JSONObject(user));
+            if(user instanceof Passenger){
+                Passenger passenger = (Passenger) user;
+                jsonObject.put("user", new JSONObject(passenger));
+                jsonObject.put("role", "passenger");
+            }else{
+                Driver driver = (Driver) user;
+                jsonObject.put("user", new JSONObject(driver));
+                jsonObject.put("role", "driver");
+
+            }
         } else {
             jsonObject.put("result", "false");
         }
 
         return jsonObject.toString();
-    }
-
-    public static void addUser(Session session, User user) {
-        if (user.getRole() == Role.DRIVER) {
-            drivers.put(session, user);
-        } else {
-            passengers.put(session, user);
-        }
     }
 
     public static void removeUser(Session session) {
@@ -82,16 +85,21 @@ public class SparkServer {
     }
 
     public static void addOrder(Order order) {
-        Random random = new Random();
-
-        orders.put(random.nextInt(), order);
+        orders.put(order.getId(), order);
     }
 
-    public static Pair<Session, User> findDriver(Order order) {
-        Pair<Session, User> p = null;
-        for (Session session : passengers.keySet()) {
-            p = new Pair<>(session, passengers.get(session));
-            break;
+    public static Pair<Session, Driver> findDriver(Order order) {
+        Pair<Session, Driver> p = null;
+        for (Session session : drivers.keySet()) {
+            Driver driver = drivers.get(session);
+
+            if(order.getRefusedDrivers().contains(driver.getId()) || driver.isBusy()){
+                continue;
+            }else{
+                p = new Pair<>(session, drivers.get(session));
+                break;
+            }
+            //p = new Pair<>(session, passengers.get(session));
         }
         return p;
 
