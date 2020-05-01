@@ -9,8 +9,6 @@ import java.util.*;
 
 public class Order {
     String id;
-    Session driverSession;
-    Session passengerSession;
     Driver driver;
     Passenger passenger;
 
@@ -36,22 +34,6 @@ public class Order {
         jsonObject.put("destinations", destinations);
 
         return jsonObject;
-    }
-
-    public Session getDriverSession() {
-        return driverSession;
-    }
-
-    public void setDriverSession(Session driverSession) {
-        this.driverSession = driverSession;
-    }
-
-    public Session getPassengerSession() {
-        return passengerSession;
-    }
-
-    public void setPassengerSession(Session passengerSession) {
-        this.passengerSession = passengerSession;
     }
 
     public Driver getDriver() {

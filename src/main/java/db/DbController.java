@@ -18,7 +18,7 @@ public class DbController {
             return new Passenger(1, "Светлана", "Шмакова", "+79088743746");
         }
         if(login.equals("d")){
-            Driver driver = new Driver(2, "Илья", "Шмаков", "+79097387721");
+            Driver driver = new Driver(2, "Валера", "Рыба", "+79097387721", 1);
             Car car = new Car("Huyndai Solaris", "orange", "T000T00");
             driver.setCar(car);
 

@@ -1,8 +1,11 @@
 package entity;
 
 import enums.Role;
+import org.eclipse.jetty.websocket.api.Session;
 
 public class Passenger {
+    Session session;
+
     private int id;
     private String firstName;
     private String lastName;
@@ -29,5 +32,13 @@ public class Passenger {
 
     public String getPhone() {
         return phone;
+    }
+
+    public Session session() {
+        return session;
+    }
+
+    public void setSession(Session session) {
+        this.session = session;
     }
 }

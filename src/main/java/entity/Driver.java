@@ -1,23 +1,29 @@
 package entity;
 
 import enums.Role;
+import org.eclipse.jetty.websocket.api.Session;
 
 public class Driver {
+
+    private Session session;
+
     private int id;
     private String firstName;
     private String lastName;
     private String phone;
+    private double rating;
 
     private Car car;
     private LatLng currentLocation;
 
     private boolean isBusy = false;
 
-    public Driver(int id, String firstName, String lastName, String phone) {
+    public Driver(int id, String firstName, String lastName, String phone, double rating) {
         this.id = id;
         this.firstName = firstName;
         this.lastName = lastName;
         this.phone = phone;
+        this.rating = rating;
     }
 
     public Car getCar() {
@@ -44,6 +50,10 @@ public class Driver {
         return phone;
     }
 
+    public double getRating() {
+        return rating;
+    }
+
     public boolean isBusy() {
         return isBusy;
     }
@@ -58,5 +68,13 @@ public class Driver {
 
     public void setCurrentLocation(LatLng currentLocation) {
         this.currentLocation = currentLocation;
+    }
+
+    public void setSession(Session session) {
+        this.session = session;
+    }
+
+    public Session session() {
+        return session;
     }
 }

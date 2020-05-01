@@ -20,8 +20,8 @@ import static spark.Spark.*;
 
 public class SparkServer {
     DbController dbController = DbController.getInstance();
-    static Map<Session, Driver> drivers = new ConcurrentHashMap<>();
-    static Map<Session, Passenger> passengers = new ConcurrentHashMap<>();
+    static Map<Integer, Driver> drivers = new ConcurrentHashMap<>();
+    static Map<Integer, Passenger> passengers = new ConcurrentHashMap<>();
     static Map<String, Order> orders = new ConcurrentHashMap<>();
 
     public SparkServer() {
@@ -79,31 +79,23 @@ public class SparkServer {
         return jsonObject.toString();
     }
 
-    public static void removeUser(Session session) {
-        drivers.remove(session);
-        passengers.remove(session);
-    }
-
     public static void addOrder(Order order) {
         orders.put(order.getId(), order);
     }
 
-    public static Pair<Session, Driver> findDriver(Order order) {
-        Pair<Session, Driver> p = null;
-        for (Session session : drivers.keySet()) {
-            Driver driver = drivers.get(session);
+    public static Driver findDriver(Order order) {
+        Driver driver = null;
 
-            if(order.getRefusedDrivers().contains(driver.getId()) || driver.isBusy()){
+        for (Driver value : drivers.values()) {
+            if(order.getRefusedDrivers().contains(value.getId()) || value.isBusy()){
                 continue;
             }else{
-                p = new Pair<>(session, drivers.get(session));
+                driver = value;
                 break;
             }
-            //p = new Pair<>(session, passengers.get(session));
         }
-        return p;
 
-
+return driver;
         /*Pair<Session,User> p = null;
         for (Session session : drivers.keySet()) {
             p = new Pair<>(session, drivers.get(session));
