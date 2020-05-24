@@ -1,9 +1,8 @@
 package entity;
 
-import enums.Role;
 import org.eclipse.jetty.websocket.api.Session;
 
-public class Driver {
+public class Driver implements Cloneable{
 
     private Session session;
 
@@ -76,5 +75,16 @@ public class Driver {
 
     public Session session() {
         return session;
+    }
+
+    @Override
+    public Object clone()  {
+        try {
+            return super.clone();
+        } catch (CloneNotSupportedException e) {
+            e.printStackTrace();
+        }
+
+        return null;
     }
 }

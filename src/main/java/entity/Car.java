@@ -5,10 +5,15 @@ public class Car {
     private String color;
     private String numberPlate;
 
-    public Car(String name, String color, String numberPlate) {
+    private int amountOfSeats;
+    private boolean hasTrunk;
+
+    public Car(String name, String color, String numberPlate, int amountOfSeats, boolean hasTrunk) {
         this.name = name;
         this.color = color;
         this.numberPlate = numberPlate;
+        this.amountOfSeats = amountOfSeats;
+        this.hasTrunk = hasTrunk;
     }
 
     public String getName() {
@@ -21,5 +26,13 @@ public class Car {
 
     public String getNumberPlate() {
         return numberPlate;
+    }
+
+    public int getAmountOfSeats() {
+        return amountOfSeats;
+    }
+
+    public boolean isHasTrunk() {
+        return hasTrunk;
     }
 }

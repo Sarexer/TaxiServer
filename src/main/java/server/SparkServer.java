@@ -3,24 +3,27 @@ package server;
 
 import db.DbController;
 import entity.Driver;
+import entity.LatLng;
 import entity.Order;
 import entity.Passenger;
-import enums.Role;
-import javafx.util.Pair;
-import org.eclipse.jetty.websocket.api.Session;
+import geoutils.GeoUtils;
 import org.json.JSONObject;
 import spark.QueryParamsMap;
 import spark.Request;
+import timer_tasks.DriversInfoTask;
 
-
+import java.util.ArrayList;
 import java.util.Map;
+import java.util.Timer;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static spark.Spark.*;
 
 public class SparkServer {
     DbController dbController = DbController.getInstance();
-    static Map<Integer, Driver> drivers = new ConcurrentHashMap<>();
+    public static Map<Integer, Driver> drivers = new ConcurrentHashMap<>();
     static Map<Integer, Passenger> passengers = new ConcurrentHashMap<>();
     static Map<String, Order> orders = new ConcurrentHashMap<>();
 
@@ -33,22 +36,32 @@ public class SparkServer {
             return auth(req);
         });
 
+        get("/history", (req, res) ->{
+            return ordersHistory(req);
+        });
+
         init();
+
+        startTimerTask();
     }
 
-   /*public static void broadcastMessage(Session session, String message) {
-       bots.keySet().stream(
+    void startTimerTask(){
+        DriversInfoTask driversInfoTask = new DriversInfoTask();
+        Timer timer = new Timer(true);
+        timer.scheduleAtFixedRate(driversInfoTask, 0, 5*1000);
+    }
 
-       ).filter(Session::isOpen).forEach(session -> {
-           try {
-               if(!session.equals(user)){
-                   session.getRemote().sendString(message);
-               }
-           } catch (Exception e) {
-               e.printStackTrace();
-           }
-       });
-   }*/
+    private Object ordersHistory(Request req) {
+        QueryParamsMap map = req.queryMap();
+        int userId = Integer.parseInt(map.value("userId"));
+
+        ArrayList<Order> history = dbController.getOrdersHistory(userId);
+
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("history", history);
+
+        return jsonObject.toString();
+    }
 
     private String auth(Request req) {
         QueryParamsMap map = req.queryMap();
@@ -84,23 +97,35 @@ public class SparkServer {
     }
 
     public static Driver findDriver(Order order) {
+        double minDistance = Double.MAX_VALUE;
         Driver driver = null;
 
-        for (Driver value : drivers.values()) {
-            if(order.getRefusedDrivers().contains(value.getId()) || value.isBusy()){
+        Map<Integer, Driver> filteredDrivers = drivers.values().stream()
+                .filter(e -> !e.isBusy())
+                .filter(e -> order.getAmountOfPassengers() <= e.getCar().getAmountOfSeats())
+                .collect(Collectors.toMap(Driver::getId, Function.identity()));
+
+        for (Driver value : filteredDrivers.values()) {
+            if(order.getCargo().equals("Да") && !value.getCar().isHasTrunk()){
                 continue;
-            }else{
-                driver = value;
-                break;
+            }
+            if (order.getRefusedDrivers().contains(value.getId())) {
+                continue;
+            } else {
+                LatLng departure = order.getDeparture();
+                LatLng driverLocation = value.getCurrentLocation();
+
+                double distanceBetween = GeoUtils.distance(departure.getLatitude(), driverLocation.getLatitude(),
+                        departure.getLongitude(), driverLocation.getLongitude(), 0, 0);
+
+                if (distanceBetween < minDistance) {
+                    minDistance = distanceBetween;
+                    driver = value;
+                }
             }
         }
 
-return driver;
-        /*Pair<Session,User> p = null;
-        for (Session session : drivers.keySet()) {
-            p = new Pair<>(session, drivers.get(session));
-        }
-        return p;*/
+        return driver;
     }
 
 
