@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="android-maps-utils-1.3.3-sources">
+    <CLASSES />
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$PROJECT_DIR$/lib/android-maps-utils-1.3.3-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

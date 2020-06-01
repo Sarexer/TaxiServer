@@ -13,7 +13,6 @@ import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,7 +39,7 @@ public class WebSocketHandler {
 
         for (Driver driver : SparkServer.drivers.values()) {
             if (driver.session().equals(user)) {
-                SparkServer.drivers.remove(driver.getId());
+                //SparkServer.drivers.remove(driver.getId());
                 System.out.println("driver disconnect");
                 return;
             }
@@ -64,6 +63,12 @@ public class WebSocketHandler {
 
             case "newOrder":
                 createOrder(user, jsonObject);
+                break;
+            case "passingOrder":
+                passingOrder(user,jsonObject);
+                break;
+            case "passingOrderResp":
+                passingOrderResp(jsonObject);
                 break;
             case "editOrder":
                 editOrder(jsonObject);
@@ -89,7 +94,7 @@ public class WebSocketHandler {
                 continueTrip(jsonObject);
                 break;
             case "endTrip":
-                endTrip(jsonObject);
+                cancelTrip(jsonObject);
                 break;
             case "cancelTrip":
                 cancelTrip(jsonObject);
@@ -102,7 +107,44 @@ public class WebSocketHandler {
                 driverRating(jsonObject);
                 break;
 
+            case "changeBusy":
+                changeBusy(jsonObject);
+                break;
+
         }
+    }
+
+    private void changeBusy(JSONObject jsonObject) {
+        int driverId = jsonObject.getInt("driverId");
+        boolean onLine = jsonObject.getBoolean("onLine");
+
+        Driver driver = SparkServer.drivers.get(driverId);
+        driver.setBusy(!onLine);
+    }
+
+    private void passingOrderResp(JSONObject jsonObject) {
+        String orderId = jsonObject.getString("orderId");
+        String passingOrderId = jsonObject.getString("passingOrderId");
+        boolean result = jsonObject.getBoolean("result");
+
+        Order order = SparkServer.orders.get(orderId);
+        Order passingOrder = SparkServer.orders.get(passingOrderId);
+
+        if(result){
+            JSONObject jsonObject1 = new JSONObject();
+            jsonObject1.put("command", "passingOrder");
+            jsonObject1.put("order", order.toJson());
+            String json = jsonObject1.toString();
+
+            sendMessage(passingOrder.getDriver().session(), json);
+            sendInfoAboutDriverToPassenger(order);
+
+            order.startTimer();
+            //sendMessage(passingOrder.getPassenger().session(), json);
+        }else{
+            sendFaileMessageToPassenger(order.getPassenger().session());
+        }
+
     }
 
     private void ordersHistory(JSONObject jsonObject) {
@@ -143,6 +185,7 @@ public class WebSocketHandler {
 
 
         Order order = new Order(departure, destinations);
+        order.setId(orderId);
         order.setAmountOfPassengers(amountOfPassengers);
         order.setCargo(cargo);
         order.setComment(comment);
@@ -163,20 +206,31 @@ public class WebSocketHandler {
         jsonObject.put("order", order.toJson());
 
         sendMessage(order.getDriver().session(), jsonObject.toString());
-        sendMessage(order.getPassenger().session(), jsonObject.toString());
+        //sendMessage(order.getPassenger().session(), jsonObject.toString());
     }
 
     private void cancelTrip(JSONObject jsonObject) {
+        System.out.println("cancel");
         String orderId = jsonObject.getString("orderId");
         Order order = SparkServer.orders.get(orderId);
 
         jsonObject = new JSONObject();
         jsonObject.put("command", "cancelTrip");
 
-        sendMessage(order.getPassenger().session(), jsonObject.toString());
-        sendMessage(order.getDriver().session(), jsonObject.toString());
+        try {
+            sendMessage(order.getPassenger().session(), jsonObject.toString());
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        try {
+            sendMessage(order.getDriver().session(), jsonObject.toString());
+        }catch (Exception e){
+            e.printStackTrace();
+        }
 
-        order.getDriver().setBusy(false);
+
+
+        SparkServer.drivers.get(order.getDriver().getId()).setBusy(false);
         order.stopTimer();
 
         SparkServer.orders.remove(orderId);
@@ -199,7 +253,7 @@ public class WebSocketHandler {
     private void sendMessage(Session user, String message) {
         try {
             user.getRemote().sendString(message);
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -308,6 +362,52 @@ public class WebSocketHandler {
         sendOrderToDriver(order);
     }
 
+    private void passingOrder(Session session, JSONObject jsonObject) {
+        int passengerId = jsonObject.getInt("passengerId");
+        JSONArray params = jsonObject.getJSONArray("params");
+        JSONObject jsonOrder = params.getJSONObject(0);
+        JSONArray jsonWaitingList = jsonOrder.getJSONArray("waitingList");
+
+        JSONObject departureJson = jsonOrder.getJSONObject("departure");
+        LatLng departure = new LatLng(departureJson.getDouble("latitude"), departureJson.getDouble("longitude"));
+
+        JSONArray jsonDestinations = jsonOrder.getJSONArray("destinations");
+        ArrayList<LatLng> destinations = new ArrayList<>();
+        for (Object jsonDestination : jsonDestinations) {
+            double lat = ((JSONObject) jsonDestination).getDouble("latitude");
+            double lng = ((JSONObject) jsonDestination).getDouble("longitude");
+            LatLng destination = new LatLng(lat, lng);
+
+            destinations.add(destination);
+        }
+        List<Object> waitingList = jsonWaitingList.toList();
+
+
+        String cargo = jsonOrder.getString("cargo");
+        String comment = jsonOrder.getString("comment");
+        int amountOfPassengers = jsonOrder.getInt("passengersAmount");
+
+
+        Order order = new Order(departure, destinations);
+        order.setAmountOfPassengers(amountOfPassengers);
+        order.setCargo(cargo);
+        order.setComment(comment);
+        order.setWaitingListInMinutes((List<Integer>) (Object) waitingList);
+        Order passingOrder = SparkServer.findPassingOrder(order);
+
+        if (passingOrder == null) {
+            sendFaileMessageToPassenger(session);
+            return;
+        }
+
+        order.setDriver(passingOrder.getDriver());
+        order.setPassenger(SparkServer.passengers.get(passengerId));
+
+        SparkServer.addOrder(order);
+
+        sendPassingOrderToPassenger(passingOrder.getPassenger().session(), order);
+    }
+
     private void sendInfoAboutDriverToPassenger(Order order) {
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("command", "carFinded");
@@ -338,6 +438,14 @@ public class WebSocketHandler {
         sendMessage(order.getDriver().session(), jsonObject.toString());
     }
 
+    private void sendPassingOrderToPassenger(Session session, Order order) {
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("command", "passingOrderReq");
+        jsonObject.put("order", order.toJson());
+
+        sendMessage(session, jsonObject.toString());
+    }
+
     private void orderResponse(JSONObject jsonObject) {
         String orderId = jsonObject.getString("orderId");
         boolean result = jsonObject.getBoolean("result");
@@ -346,7 +454,11 @@ public class WebSocketHandler {
         Order order = SparkServer.orders.get(orderId);
 
         if (result) {
+            SparkServer.drivers.get(order.getDriver().getId()).setBusy(true);
             sendInfoAboutDriverToPassenger(order);
+            if(order.getOwner().equals("admin")){
+
+            }
             order.startTimer();
         } else {
             String declineReason = jsonObject.getString("reason");
@@ -354,6 +466,9 @@ public class WebSocketHandler {
             Driver driver = SparkServer.findDriver(order);
 
             if (driver == null) {
+                if(order.getOwner().equals("admin")){
+
+                }
                 sendFaileMessageToPassenger(order.getPassenger().session());
                 SparkServer.orders.remove(order.getId());
                 return;

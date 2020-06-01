@@ -46,7 +46,12 @@ public class DriversInfoTask extends TimerTask {
             //drivers.remove(driver);
             String json = prepareJson();
 
-            driver.session().getRemote().sendString(json);
+            try {
+                driver.session().getRemote().sendString(json);
+            }catch (Exception e){
+                e.printStackTrace();
+                this.cancel();
+            }
 
             //drivers.add(driver);
         }

@@ -5,12 +5,34 @@ import entity.Driver;
 import entity.Order;
 import entity.Passenger;
 
+import javax.swing.plaf.nimbus.State;
+import java.sql.*;
 import java.util.ArrayList;
 
 public class DbController {
     private static DbController instance;
+    Connection connection;
 
     private DbController(){
+        /*try {
+            Class.forName("org.sqlite.JDBC");
+            connection = DriverManager.getConnection("jdbc:sqlite:/Users/ilasmakov/IdeaProjects/TaxiServer/assets/db.sqlite3");
+            Statement statement = connection.createStatement();
+
+            ResultSet resultSet = statement.executeQuery("sqlite3_threadsafe()");
+
+            while(resultSet.next()){
+                *//*int id = resultSet.getInt("id");
+                String lastName = resultSet.getString("lastname");
+
+                System.out.println(String.format("id: %s, lastName: %s", id, lastName));*//*
+            }
+        } catch (ClassNotFoundException | SQLException e) {
+            e.printStackTrace();
+        }*/
+
+
+
 
     }
 
@@ -20,7 +42,7 @@ public class DbController {
             return new Passenger(1, "Светлана", "Шмакова", "+79088743746");
         }
         if(login.equals("p2")){
-            return new Passenger(1, "Илья", "Шмаков", "+79088743746");
+            return new Passenger(6, "Илья", "Шмаков", "+79088743746");
         }
         if(login.equals("sed")){
             Driver driver = new Driver(2, "Валера", "Рыба", "+79097387721", 1);
@@ -58,8 +80,8 @@ public class DbController {
         ArrayList<Order> history = new ArrayList<>();
 
         Order order = new Order(null, null);
-        order.setDriver((Driver)authenticate("d1", ""));
-        order.setPassenger((Passenger) authenticate("p", ""));
+        order.setDriver((Driver)authenticate("sed", ""));
+        order.setPassenger((Passenger) authenticate("p1", ""));
 
         history.add(order);
         history.add(order);
@@ -67,9 +89,37 @@ public class DbController {
         history.add(order);
 
         order = new Order(null, null);
-        order.setPassenger((Passenger) authenticate("p", ""));
-        order.setDriver((Driver) authenticate("d2", ""));
+        order.setPassenger((Passenger) authenticate("p1", ""));
+        order.setDriver((Driver) authenticate("bus", ""));
 
+        history.add(order);
+        history.add(order);
+        history.add(order);
+        history.add(order);
+        history.add(order);
+        history.add(order);
+        history.add(order);
+        history.add(order);
+        history.add(order);
+        history.add(order);
+        history.add(order);
+        history.add(order);
+        history.add(order);
+
+        return history;
+    }
+
+    public ArrayList<Order> getDriverHistory(int userId){
+        ArrayList<Order> history = new ArrayList<>();
+
+        Order order = new Order(null, null);
+        order.setDriver((Driver)authenticate("sed", ""));
+        order.setPassenger((Passenger) authenticate("p1", ""));
+
+        history.add(order);
+        history.add(order);
+        history.add(order);
+        history.add(order);
         history.add(order);
         history.add(order);
         history.add(order);

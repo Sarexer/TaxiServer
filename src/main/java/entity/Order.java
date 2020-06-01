@@ -15,6 +15,7 @@ public class Order {
     String id;
     Driver driver;
     Passenger passenger;
+    String owner;
 
     LatLng departure;
     ArrayList<LatLng> destinations;
@@ -111,6 +112,10 @@ public class Order {
         return id;
     }
 
+    public void setId(String id) {
+        this.id = id;
+    }
+
     public HashSet<Integer> getRefusedDrivers() {
         return refusedDrivers;
     }
@@ -145,5 +150,9 @@ public class Order {
 
     public void setComment(String comment) {
         this.comment = comment;
+    }
+
+    public String getOwner() {
+        return owner;
     }
 }
