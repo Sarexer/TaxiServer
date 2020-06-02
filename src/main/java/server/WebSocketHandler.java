@@ -1,10 +1,7 @@
 package server;
 
 import db.DbController;
-import entity.Driver;
-import entity.LatLng;
-import entity.Order;
-import entity.Passenger;
+import entity.*;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
@@ -278,6 +275,13 @@ public class WebSocketHandler {
                 jsonObject.put("user", new JSONObject(passenger));
             } else {
                 Driver driver = (Driver) user;
+                Car car = dbController.routeList.check(driver.getId());
+                driver.setCar(car);
+
+                if(car == null){
+                    driver.setBusy(true);
+                }
+
                 driver.setSession(session);
                 SparkServer.drivers.put(driver.getId(), driver);
 
@@ -456,9 +460,9 @@ public class WebSocketHandler {
         if (result) {
             SparkServer.drivers.get(order.getDriver().getId()).setBusy(true);
             sendInfoAboutDriverToPassenger(order);
-            if(order.getOwner().equals("admin")){
+            /*if(order.getOwner().equals("admin")){
 
-            }
+            }*/
             order.startTimer();
         } else {
             String declineReason = jsonObject.getString("reason");
@@ -466,9 +470,9 @@ public class WebSocketHandler {
             Driver driver = SparkServer.findDriver(order);
 
             if (driver == null) {
-                if(order.getOwner().equals("admin")){
+                /*if(order.getOwner().equals("admin")){
 
-                }
+                }*/
                 sendFaileMessageToPassenger(order.getPassenger().session());
                 SparkServer.orders.remove(order.getId());
                 return;

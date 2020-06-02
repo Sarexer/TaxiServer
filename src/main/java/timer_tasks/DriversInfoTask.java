@@ -43,7 +43,7 @@ public class DriversInfoTask extends TimerTask {
         Map<Integer, Driver> users = SparkServer.drivers;
 
         for (Driver driver : users.values()) {
-            //drivers.remove(driver);
+            drivers.remove(driver);
             String json = prepareJson();
 
             try {
@@ -53,7 +53,7 @@ public class DriversInfoTask extends TimerTask {
                 this.cancel();
             }
 
-            //drivers.add(driver);
+            drivers.add(driver);
         }
     }
 

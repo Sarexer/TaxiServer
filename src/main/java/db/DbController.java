@@ -1,9 +1,8 @@
 package db;
 
-import entity.Car;
+import entity.*;
 import entity.Driver;
-import entity.Order;
-import entity.Passenger;
+import spark.Route;
 
 import javax.swing.plaf.nimbus.State;
 import java.sql.*;
@@ -12,6 +11,7 @@ import java.util.ArrayList;
 public class DbController {
     private static DbController instance;
     Connection connection;
+    public RouteList routeList = new RouteList();
 
     private DbController(){
         /*try {
@@ -30,10 +30,6 @@ public class DbController {
         } catch (ClassNotFoundException | SQLException e) {
             e.printStackTrace();
         }*/
-
-
-
-
     }
 
     public Object authenticate(String login, String password){
@@ -46,29 +42,29 @@ public class DbController {
         }
         if(login.equals("sed")){
             Driver driver = new Driver(2, "Валера", "Рыба", "+79097387721", 1);
-            Car car = new Car("Huyndai Solaris", "orange", "T000T00", 4, false);
-            driver.setCar(car);
+            /*Car car = new Car("Huyndai Solaris", "orange", "T000T00", 4, false);
+            driver.setCar(car);*/
 
             return driver;
         }
         if(login.equals("pick")){
             Driver driver = new Driver(3, "Андрей", "Каренгин", "+7123452345", 1);
-            Car car = new Car("Toyota Hilux", "silver", "T000T00", 4, true);
-            driver.setCar(car);
+            /*Car car = new Car("Toyota Hilux", "silver", "T000T00", 4, true);
+            driver.setCar(car);*/
 
             return driver;
         }
         if(login.equals("bus")){
             Driver driver = new Driver(4, "Илья", "Мальцев", "+709427384324", 1);
-            Car car = new Car("ЛИАЗ-5256", "white", "T000T00", 44, false);
-            driver.setCar(car);
+            /*Car car = new Car("ЛИАЗ-5256", "white", "T000T00", 44, false);
+            driver.setCar(car);*/
 
             return driver;
         }
         if(login.equals("mbus")){
             Driver driver = new Driver(5, "Евгений", "Нохрин", "+7837294234", 1);
-            Car car = new Car("Нyundai H-1", "silver", "T000T00", 12, false);
-            driver.setCar(car);
+            /*Car car = new Car("Нyundai H-1", "silver", "T000T00", 12, false);
+            driver.setCar(car);*/
 
             return driver;
         }
