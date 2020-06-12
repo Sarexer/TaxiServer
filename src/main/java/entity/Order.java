@@ -15,7 +15,7 @@ public class Order {
     String id;
     Driver driver;
     Passenger passenger;
-    String owner;
+    boolean isPassengerMakeOrder = true;
 
     LatLng departure;
     ArrayList<LatLng> destinations;
@@ -152,7 +152,11 @@ public class Order {
         this.comment = comment;
     }
 
-    public String getOwner() {
-        return owner;
+    public boolean isPassengerMakeOrder() {
+        return isPassengerMakeOrder;
+    }
+
+    public void setPassengerMakeOrder(boolean passengerMakeOrder) {
+        isPassengerMakeOrder = passengerMakeOrder;
     }
 }

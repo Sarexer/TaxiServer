@@ -20,7 +20,7 @@ public class DriversInfoTask extends TimerTask {
             initDriverList();
             sendDriverList();
         } catch (Exception e) {
-            e.printStackTrace();
+            //e.printStackTrace();
         }
     }
 
@@ -50,7 +50,7 @@ public class DriversInfoTask extends TimerTask {
                 driver.session().getRemote().sendString(json);
             }catch (Exception e){
                 e.printStackTrace();
-                this.cancel();
+                //this.cancel();
             }
 
             drivers.add(driver);

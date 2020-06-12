@@ -73,10 +73,13 @@ public class DbController {
     }
 
     public ArrayList<Order> getOrdersHistory(int userId){
+
         ArrayList<Order> history = new ArrayList<>();
 
         Order order = new Order(null, null);
-        order.setDriver((Driver)authenticate("sed", ""));
+        Driver driver = (Driver)authenticate("sed", "");
+        driver.setCar(routeList.check(driver.getId()));
+        order.setDriver(driver);
         order.setPassenger((Passenger) authenticate("p1", ""));
 
         history.add(order);
@@ -86,7 +89,9 @@ public class DbController {
 
         order = new Order(null, null);
         order.setPassenger((Passenger) authenticate("p1", ""));
-        order.setDriver((Driver) authenticate("bus", ""));
+        Driver driver1 = (Driver)authenticate("bus", "");
+        driver1.setCar(routeList.check(driver1.getId()));
+        order.setDriver(driver1);
 
         history.add(order);
         history.add(order);
@@ -109,7 +114,9 @@ public class DbController {
         ArrayList<Order> history = new ArrayList<>();
 
         Order order = new Order(null, null);
-        order.setDriver((Driver)authenticate("sed", ""));
+        Driver driver = (Driver)authenticate("sed", "");
+        driver.setCar(routeList.check(driver.getId()));
+        order.setDriver(driver);
         order.setPassenger((Passenger) authenticate("p1", ""));
 
         history.add(order);

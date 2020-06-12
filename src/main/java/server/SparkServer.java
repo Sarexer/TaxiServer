@@ -7,7 +7,9 @@ import entity.LatLng;
 import entity.Order;
 import entity.Passenger;
 import geoutils.GeoUtils;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
+import okhttp3.RequestBody;
 import okhttp3.Response;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -47,13 +49,84 @@ public class SparkServer {
             return driverHistory(req);
         });
 
-        get("/newOrder", ((request, response) -> {
-            return newOrder(request);
+        /*get("/newOrder", ((request, response) -> {
+            System.out.println("admin order");
+            try{
+                return newOrder(request);
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+
+            return "otvet";
+        }));*/
+
+        post("/newOrder", ((request, response) -> {
+            try{
+                return newOrder(request);
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+
+            return "otvet";
+        }));
+
+        post("/editOrder", ((request, response) -> {
+            try{
+                return editOrder(request);
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+
+            return "otvet";
         }));
 
         init();
 
         startTimerTask();
+    }
+
+    private Object editOrder(Request req) {
+        System.out.println(req.body());
+        JSONObject jsonObject = new JSONObject(req.body());
+        JSONArray params = jsonObject.getJSONArray("params");
+        JSONObject jsonOrder = params.getJSONObject(0);
+        String orderId = jsonOrder.getString("id");
+        JSONArray jsonWaitingList = jsonOrder.getJSONArray("waitingList");
+
+        JSONObject departureJson = jsonOrder.getJSONObject("departure");
+        LatLng departure = new LatLng(departureJson.getDouble("latitude"), departureJson.getDouble("longitude"));
+
+        JSONArray jsonDestinations = jsonOrder.getJSONArray("destinations");
+        ArrayList<LatLng> destinations = new ArrayList<>();
+        for (Object jsonDestination : jsonDestinations) {
+            double lat = ((JSONObject) jsonDestination).getDouble("latitude");
+            double lng = ((JSONObject) jsonDestination).getDouble("longitude");
+            LatLng destination = new LatLng(lat, lng);
+
+            destinations.add(destination);
+        }
+        List<Object> waitingList = jsonWaitingList.toList();
+
+
+        String cargo = jsonOrder.getString("cargo");
+        String comment = jsonOrder.getString("comment");
+        int amountOfPassengers = jsonOrder.getInt("passengersAmount");
+
+
+        Order order = new Order(departure, destinations);
+        order.setId(orderId);
+        order.setAmountOfPassengers(amountOfPassengers);
+        order.setCargo(cargo);
+        order.setComment(comment);
+        order.setWaitingListInMinutes((List<Integer>) (Object) waitingList);
+
+        Order oldOrder = SparkServer.orders.get(orderId);
+        order.setDriver(oldOrder.getDriver());
+        order.setPassenger(oldOrder.getPassenger());
+
+        SparkServer.orders.replace(orderId, order);
+        sendEditedOrderToClients(order);
+        return "otvet";
     }
 
     void startTimerTask(){
@@ -273,12 +346,13 @@ public class SparkServer {
         return driver;
     }
 
-    public String newOrder(Request req){
+    public String newOrder(Request req) throws Exception{
+        System.out.println(req.body());
         JSONObject jsonObject = new JSONObject(req.body());
 
+        int driverId = jsonObject.optInt("driverId", -1);
         int passengerId = jsonObject.getInt("passengerId");
-        JSONArray params = jsonObject.getJSONArray("order");
-        JSONObject jsonOrder = params.getJSONObject(0);
+        JSONObject jsonOrder = jsonObject.getJSONObject("order");
         JSONArray jsonWaitingList = jsonOrder.getJSONArray("waitingList");
 
         JSONObject departureJson = jsonOrder.getJSONObject("departure");
@@ -306,8 +380,15 @@ public class SparkServer {
         order.setCargo(cargo);
         order.setComment(comment);
         order.setWaitingListInMinutes((List<Integer>) (Object) waitingList);
+        order.setPassengerMakeOrder(false);
 
-        Driver driver = SparkServer.findDriver(order);
+        Driver driver = null;
+        if(driverId == -1){
+            driver = SparkServer.findDriver(order);
+        }else{
+            driver = SparkServer.drivers.get(driverId);
+        }
+
 
         if (driver == null) {
             JSONObject failJson = new JSONObject();
@@ -333,10 +414,22 @@ public class SparkServer {
             e.printStackTrace();
         }
 
+        JSONObject jsonObject1 = new JSONObject();
+        jsonObject1.put("order_uuid", order.getId());
 
-        return "otvet";
+        return jsonObject1.toString();
     }
 
+    private void sendEditedOrderToClients(Order order) {
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("command", "editOrder");
+        jsonObject.put("order", order.toJson());
 
-
+        try {
+            order.getDriver().session().getRemote().sendString(jsonObject.toString());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        //sendMessage(order.getPassenger().session(), jsonObject.toString());
+    }
 }

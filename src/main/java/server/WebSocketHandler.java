@@ -2,6 +2,10 @@ package server;
 
 import db.DbController;
 import entity.*;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
@@ -10,6 +14,7 @@ import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,6 +22,7 @@ import java.util.List;
 public class WebSocketHandler {
     DbController dbController = DbController.getInstance();
     UdpClient udpClient = new UdpClient();
+    OkHttpClient httpClient = new OkHttpClient();
 
     @OnWebSocketConnect
     public void onConnect(Session user) throws Exception {
@@ -155,10 +161,9 @@ public class WebSocketHandler {
     }
 
     private void editOrder(JSONObject jsonObject) {
-        String orderId = jsonObject.getString("orderId");
-
         JSONArray params = jsonObject.getJSONArray("params");
         JSONObject jsonOrder = params.getJSONObject(0);
+        String orderId = jsonOrder.getString("id");
         JSONArray jsonWaitingList = jsonOrder.getJSONArray("waitingList");
 
         JSONObject departureJson = jsonOrder.getJSONObject("departure");
@@ -229,6 +234,22 @@ public class WebSocketHandler {
 
         SparkServer.drivers.get(order.getDriver().getId()).setBusy(false);
         order.stopTimer();
+
+        JSONObject jsonObject1 = new JSONObject();
+        jsonObject1.put("result", "complete");
+        jsonObject1.put("driverId", order.getDriver().getId());
+        jsonObject1.put("order", order.toJson());
+
+        okhttp3.Request request = new okhttp3.Request.Builder()
+                .url("http://178.46.154.134/driver_ans")
+                .post(RequestBody.create(jsonObject1.toString(), MediaType.parse("application/json; charset=utf-8")))
+                .build();
+
+        try (Response response = httpClient.newCall(request).execute()) {
+            System.out.println(response.message());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         SparkServer.orders.remove(orderId);
     }
@@ -408,11 +429,31 @@ public class WebSocketHandler {
         order.setPassenger(SparkServer.passengers.get(passengerId));
 
         SparkServer.addOrder(order);
-
+        sendPassingOrderToAdmin(order, passingOrder.getId());
         sendPassingOrderToPassenger(passingOrder.getPassenger().session(), order);
     }
 
+    private void sendPassingOrderToAdmin(Order order, String passingOrderId) {
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("main_order", passingOrderId);
+        jsonObject.put("order", order.toJson());
+
+        okhttp3.Request request = new okhttp3.Request.Builder()
+                .url("http://178.46.154.134/associated_order")
+                .post(RequestBody.create(jsonObject.toString(), MediaType.parse("application/json; charset=utf-8")))
+                .build();
+
+        try (Response response = httpClient.newCall(request).execute()) {
+            System.out.println(response.message());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void sendInfoAboutDriverToPassenger(Order order) {
+        if(order.getPassenger() == null){
+            return;
+        }
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("command", "carFinded");
         jsonObject.put("result", true);
@@ -460,9 +501,8 @@ public class WebSocketHandler {
         if (result) {
             SparkServer.drivers.get(order.getDriver().getId()).setBusy(true);
             sendInfoAboutDriverToPassenger(order);
-            /*if(order.getOwner().equals("admin")){
+            sendInfoAboutDriverToAdmin(order);
 
-            }*/
             order.startTimer();
         } else {
             String declineReason = jsonObject.getString("reason");
@@ -470,9 +510,11 @@ public class WebSocketHandler {
             Driver driver = SparkServer.findDriver(order);
 
             if (driver == null) {
-                /*if(order.getOwner().equals("admin")){
+                if(order.isPassengerMakeOrder()){
 
-                }*/
+                }else{
+                    sendFailMessageToAdmin(order);
+                }
                 sendFaileMessageToPassenger(order.getPassenger().session());
                 SparkServer.orders.remove(order.getId());
                 return;
@@ -484,6 +526,54 @@ public class WebSocketHandler {
         }
     }
 
+    private void sendInfoAboutDriverToAdmin(Order order) {
+        System.out.println("send to admin");
+
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("result", true);
+        jsonObject.put("driverId", order.getDriver().getId());
+        jsonObject.put("orderId", order.getId());
+
+
+        String json = jsonObject.toString();
+        System.out.println(json);
+        okhttp3.Request request = new okhttp3.Request.Builder()
+                .url("http://178.46.154.134/driver_ans")
+                .post(RequestBody.create(json, MediaType.parse("application/json; charset=utf-8")))
+                .build();
+
+        try (Response response = httpClient.newCall(request).execute()) {
+            System.out.println(response.message());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    private void sendFailMessageToAdmin(Order order) {
+        OkHttpClient httpClient = new OkHttpClient();
+
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("result", false);
+        jsonObject.put("orderId", order.getId());
+
+        String json = jsonObject.toString();
+
+        okhttp3.Request request = new okhttp3.Request.Builder()
+                .url("address")
+                .put(RequestBody.create(json, MediaType.parse("application/json; charset=utf-8")))
+                .build();
+
+        try (Response response = httpClient.newCall(request).execute()) {
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+
+
     private void updateDriverLocation(JSONObject jsonObject) {
         int driverId = jsonObject.getInt("driverId");
         double latitude = jsonObject.getDouble("latitude");
@@ -491,7 +581,7 @@ public class WebSocketHandler {
 
         LatLng driverLocation = new LatLng(latitude, longitude);
 
-        System.out.println(latitude + ", " + longitude);
+        //System.out.println(latitude + ", " + longitude);
 
         Driver driver = SparkServer.drivers.get(driverId);
         driver.setCurrentLocation(driverLocation);
@@ -544,7 +634,19 @@ public class WebSocketHandler {
     }
 
     private void driverRating(JSONObject jsonObject){
-        String orderId = jsonObject.getString("orderId");
+        /*String orderId = jsonObject.getString("orderId");
         int rating = jsonObject.getInt("rating");
+        int driverId = jsonObject.getInt("driverId");*/
+
+        okhttp3.Request request = new okhttp3.Request.Builder()
+                .url("http://178.46.154.134/rate")
+                .post(RequestBody.create(jsonObject.toString(), MediaType.parse("application/json; charset=utf-8")))
+                .build();
+
+        try (Response response = httpClient.newCall(request).execute()) {
+            System.out.println(response.message());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
