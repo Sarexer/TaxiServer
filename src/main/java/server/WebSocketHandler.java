@@ -507,15 +507,18 @@ public class WebSocketHandler {
         } else {
             String declineReason = jsonObject.getString("reason");
             order.getRefusedDrivers().add(order.getDriver().getId());
+            if(!order.isPassengerMakeOrder()){
+                sendFailMessageToAdmin(order);
+            }
             Driver driver = SparkServer.findDriver(order);
 
             if (driver == null) {
-                if(order.isPassengerMakeOrder()){
 
-                }else{
-                    sendFailMessageToAdmin(order);
+
+                if(order.getPassenger() != null){
+                    sendFaileMessageToPassenger(order.getPassenger().session());
                 }
-                sendFaileMessageToPassenger(order.getPassenger().session());
+
                 SparkServer.orders.remove(order.getId());
                 return;
             }
@@ -560,7 +563,7 @@ public class WebSocketHandler {
         String json = jsonObject.toString();
 
         okhttp3.Request request = new okhttp3.Request.Builder()
-                .url("address")
+                .url("http://178.46.154.134/driver_ans")
                 .put(RequestBody.create(json, MediaType.parse("application/json; charset=utf-8")))
                 .build();
 
@@ -606,7 +609,11 @@ public class WebSocketHandler {
         jsonObject = new JSONObject();
         jsonObject.put("command", "startTrip");
 
-        sendMessage(order.getPassenger().session(), jsonObject.toString());
+        try{
+            sendMessage(order.getPassenger().session(), jsonObject.toString());
+        }catch (Exception e){
+
+        }
     }
 
     private void continueTrip(JSONObject jsonObject) {
@@ -616,7 +623,12 @@ public class WebSocketHandler {
         jsonObject = new JSONObject();
         jsonObject.put("command", "continueTrip");
 
-        sendMessage(order.getPassenger().session(), jsonObject.toString());
+        try{
+            sendMessage(order.getPassenger().session(), jsonObject.toString());
+        }catch (Exception e){
+
+        }
+
     }
 
     private void endTrip(JSONObject jsonObject) {

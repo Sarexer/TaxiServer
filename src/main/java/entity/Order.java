@@ -40,7 +40,9 @@ public class Order {
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("id", id);
         jsonObject.put("driver", new JSONObject(driver));
-        jsonObject.put("passenger", new JSONObject(passenger));
+        if(passenger != null){
+            jsonObject.put("passenger", new JSONObject(passenger));
+        }
         jsonObject.put("departure", new JSONObject(departure));
         jsonObject.put("destinations", destinations);
         jsonObject.put("amountPassengers", amountOfPassengers);
