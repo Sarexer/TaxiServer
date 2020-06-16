@@ -351,7 +351,7 @@ public class SparkServer {
         JSONObject jsonObject = new JSONObject(req.body());
 
         int driverId = jsonObject.optInt("driverId", -1);
-        int passengerId = jsonObject.getInt("passengerId");
+        int passengerId = jsonObject.optInt("passengerId", -1);
         JSONObject jsonOrder = jsonObject.getJSONObject("order");
         JSONArray jsonWaitingList = jsonOrder.getJSONArray("waitingList");
 
@@ -400,7 +400,10 @@ public class SparkServer {
         }
 
         order.setDriver(driver);
-        order.setPassenger(SparkServer.passengers.get(passengerId));
+
+        if(passengerId != -1){
+            order.setPassenger(SparkServer.passengers.get(passengerId));
+        }
 
         SparkServer.addOrder(order);
 
