@@ -402,7 +402,10 @@ public class SparkServer {
         order.setDriver(driver);
 
         if(passengerId != -1){
-            order.setPassenger(SparkServer.passengers.get(passengerId));
+            Passenger passenger = SparkServer.passengers.get(passengerId);
+            if(passenger != null){
+                order.setPassenger(passenger);
+            }
         }
 
         SparkServer.addOrder(order);
